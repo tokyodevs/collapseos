@@ -281,6 +281,7 @@ popRS:
 	dec ix
 	ret
 
+; TODO: check from here
 ; Verifies that SP and RS are within bounds. If it's not, call ABORT
 chkRS:
 	push	ix \ pop hl

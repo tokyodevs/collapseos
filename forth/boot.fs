@@ -13,7 +13,7 @@ H@ ORG !
 
 0 JPnn,           ( 00, main )
 0 JPnn,           ( 03, find )
-RAMSTART 0x06 + , ( 06, IP )
+NOP, NOP,         ( 06, unused )
 NOP, NOP,         ( 08, LATEST )
 NOP,              ( 0a, unused )
 0 JPnn,           ( 0b, cellWord )
@@ -48,28 +48,28 @@ RAMSTART 0x02 + , ( 3a, CURRENT )
 L1 BSET ( EXIT )
     0x17 A,,         ( nativeWord )
     0x14 CALLnn,     ( popRS )
-    0x06 @ LD(nn)HL, ( 0x06 == IP )
+    RAMSTART 0x06 + LD(nn)HL, ( RAMSTART+0x06 == IP )
     JPNEXT,
 
 NOP, NOP, NOP,   ( unused )
 
 '(' A, 'b' A, 'r' A, ')' A,
-H@ L1 @ - A,, ( prev )
+PC L1 @ - A,, ( prev )
 4 A,
 L1 BSET ( BR )
     0x17 A,,         ( nativeWord )
 L2 BSET ( used in CBR )
-    0x06 @ LDHL(nn), ( 0x06 == IP )
+    RAMSTART 0x06 + LDHL(nn), ( RAMSTART+0x06 == IP )
     E (HL) LDrr,
     HL INCss,
     D (HL) LDrr,
     HL DECss,
     DE ADDHLss,
-    0x06 @ LD(nn)HL, ( 0x06 == IP )
+    RAMSTART 0x06 + LD(nn)HL, ( RAMSTART+0x06 == IP )
     JPNEXT,
 
 '(' A, '?' A, 'b' A, 'r' A, ')' A,
-H@ L1 @ - A,, ( prev )
+PC L1 @ - A,, ( prev )
 5 A,
 L1 BSET ( CBR )
     0x17 A,,         ( nativeWord )
@@ -79,18 +79,17 @@ L1 BSET ( CBR )
     L ORr,
     JRZ, L2 BWR ( BR + 2. False, branch )
     ( True, skip next 2 bytes and don't branch )
-    0x06 @ LDHL(nn), ( 0x06 == IP )
+    RAMSTART 0x06 + LDHL(nn), ( RAMSTART+0x06 == IP )
     HL INCss,
     HL INCss,
-    0x06 @ LD(nn)HL, ( 0x06 == IP )
+    RAMSTART 0x06 + LD(nn)HL, ( RAMSTART+0x06 == IP )
     JPNEXT,
 
 'E' A, 'X' A, 'E' A, 'C' A, 'U' A, 'T' A, 'E' A,
-H@ L1 @ - A,, ( prev )
+PC L1 @ - A,, ( prev )
 7 A,
-L3 BSET ( EXECUTE, used for _bend )
-    0x17 A,,         ( nativeWord )
 L2 BSET ( used frequently below )
+    0x17 A,,         ( nativeWord )
     IY POPqq,        ( is a wordref )
     chkPS,
     L 0 IX+ LDrIXY,
@@ -113,8 +112,8 @@ PC ORG @ 1 + ! ( main )
   operation (which can end up being prohibitive in terms of
   costs), we give ourselves a nice 6 bytes buffer. 6 bytes
   because we seldom have words requiring more than 3 items
-  from the stack. Then, at each "exit" call we check for stack
-  underflow.
+  from the stack. Then, at each "exit" call we check for
+  stack underflow.
 )
     SP 0xfffa LDddnn,
     0x24 @ SP LD(nn)dd, ( 24 == INITIAL_SP )
@@ -132,7 +131,8 @@ PC ORG @ 1 + ! ( main )
 
 PC ORG @ 4 + ! ( find )
 ( Find the entry corresponding to word where (HL) points to
-  and sets DE to point to that entry. Z if found, NZ if not. )
+  and sets DE to point to that entry. Z if found, NZ if not.
+)
 
     BC PUSHqq,
     HL PUSHqq,
@@ -152,19 +152,19 @@ PC ORG @ 4 + ! ( find )
   Because of our dict structure and because we know our
   lengths, it's easier to compare starting from the end.
   Currently, after CPIR, HL points to char after null. Let's
-  adjust. Because the compare loop pre-decrements, instead of
-  DECing HL twice, we DEC it once. )
+  adjust. Because the compare loop pre-decrements, instead
+  of DECing HL twice, we DEC it once. )
     HL DECss,
-    DE 0x3a @ LDddnn,   ( 3a == CURRENT )
+    DE 0x3a @ LDdd(nn),   ( 3a == CURRENT )
 L3 BSET ( inner )
     ( DE is a wordref, first step, do our len correspond? )
     HL PUSHqq,          ( --> lvl 1 )
     DE PUSHqq,          ( --> lvl 2 )
     DE DECss,
     LDA(DE),
-    0x7f ANDr,          ( remove IMMEDIATE flag )
+    0x7f ANDn,          ( remove IMMEDIATE flag )
     C CPr,
-    JRZ, L4 FWR ( loopend )
+    JRNZ, L4 FWR ( loopend )
     ( match, let's compare the string then )
     DE DECss, ( Skip prev field. One less because we )
     DE DECss, ( pre-decrement )
@@ -178,8 +178,8 @@ L5 BSET ( loop )
     JRNZ, L6 FWR ( loopend )
     DJNZ, L5 BWR ( loop )
 L4 FSET L6 FSET ( loopend )
-( At this point, Z is set if we have a match. In all cases, we
-  want to pop HL and DE )
+( At this point, Z is set if we have a match. In all cases,
+  we want to pop HL and DE )
     DE POPqq,           ( <-- lvl 2 )
     HL POPqq,           ( <-- lvl 1 )
     JRZ, L4 FWR ( end, match? we're done! )
@@ -197,7 +197,7 @@ L4 FSET L6 FSET ( loopend )
     HL POPqq,           ( <-- lvl 2 )
     ( HL is prev field's addr. Is offset zero? )
     A D LDrr,
-    E OR,
+    E ORr,
     JRZ, L6 FWR ( noprev )
     ( get absolute addr from offset )
     ( carry cleared from "or e" )
@@ -214,5 +214,171 @@ L4 FSET ( end )
     HL POPqq,
     BC POPqq,
     RET,
+
+PC ORG @ 0x29 + ! ( flagsToBC )
+    BC 0 LDddnn,
+    CZ RETcc, ( equal )
+    BC INCss,
+    CM RETcc, ( > )
+    ( < )
+    BC DECss,
+    BC DECss,
+    RET,
+
+PC ORG @ 0x12 + ! ( pushRS )
+    IX INCss,
+    IX INCss,
+    0 IX+ L LDIXYr,
+    1 IX+ H LDIXYr,
+    RET,
+
+PC ORG @ 0x15 + ! ( popRS )
+    L 0 IX+ LDrIXY,
+    H 1 IX+ LDrIXY,
+    IX DECss,
+    IX DECss,
+    RET,
+
+'(' A, 'u' A, 'f' A, 'l' A, 'w' A, ')' A, 0 A,
+L1 BSET ( abortUnderflow )
+    HL PC 7 - LDddnn,
+    0x03 CALLnn, ( find )
+    DE PUSHqq,
+    L2 @ 2 + JPnn, ( EXECUTE, skip nativeWord )
+
+
+PC ORG @ 0x1e + ! ( chkPS )
+    HL PUSHqq,
+    0x24 @ LDHL(nn), ( 24 == INITIAL_SP )
+( We have the return address for this very call on the stack
+  and protected registers. Let's compensate )
+    HL DECss,
+    HL DECss,
+    HL DECss,
+    HL DECss,
+    A ORr,           ( clear carry )
+    SP SBCHLss,
+    HL POPqq,
+    CNC RETcc,      ( INITIAL_SP >= SP? good )
+    JR, L1 BWR ( abortUnderflow )
+
+L3 BSET ( chkRS )
+    IX PUSHqq, HL POPqq,
+    DE RS_ADDR LDddnn,
+    A ORr,           ( clear carry )
+    DE SBCHLss,
+    CNC RETcc,      ( IX >= RS_ADDR? good )
+    JR, L1 BWR ( abortUnderflow )
+
+
+PC ORG @ 0x1b + ! ( next )
+( This routine is jumped to at the end of every word. In it,
+  we jump to current IP, but we also take care of increasing
+  it by 2 before jumping. )
+	( Before we continue: are stacks within bounds? )
+    0x1d CALLnn, ( chkPS )
+    L3 @ CALLnn, ( chkRS )
+    DE RAMSTART 0x06 + LDdd(nn), ( RAMSTART+0x06 == IP )
+    H D LDrr,
+    L E LDrr,
+    DE INCss,
+    DE INCss,
+    RAMSTART 0x06 + DE LD(nn)dd, ( RAMSTART+0x06 == IP )
+	( HL is an atom list pointer. We need to go into it to
+      have a wordref )
+    E (HL) LDrr,
+    HL INCss,
+    D (HL) LDrr,
+    DE PUSHqq,
+    L2 @ 2 + JPnn, ( EXECUTE, skip nativeWord )
+
+( WORD ROUTINES )
+
+PC ORG @ 0x0f + ! ( compiledWord )
+( Execute a list of atoms, which always end with EXIT.
+  IY points to that list. What do we do:
+  1. Push current IP to RS
+  2. Set new IP to the second atom of the list
+  3. Execute the first atom of the list. )
+    RAMSTART 0x06 + LDHL(nn), ( RAMSTART+0x06 == IP )
+    0x11 CALLnn,     ( 11 == pushRS )
+    IY PUSHqq, HL POPqq,
+    HL INCss,
+    HL INCss,
+    RAMSTART 0x06 + LD(nn)HL, ( RAMSTART+0x06 == IP )
+	( IY still is our atom reference )
+    L 0 IY+ LDrIXY,
+    H 1 IY+ LDrIXY,
+    HL PUSHqq,      ( arg for EXECUTE )
+    L2 @ 2 + JPnn, ( EXECUTE, skip nativeWord )
+
+PC ORG @ 0x0c + ! ( cellWord )
+( Pushes the PFA directly )
+    IY PUSHqq,
+    JPNEXT,
+
+PC ORG @ 0x2c + ! ( doesWord )
+( The word was spawned from a definition word that has a
+  DOES>. PFA+2 (right after the actual cell) is a link to the
+  slot right after that DOES>. Therefore, what we need to do
+  push the cell addr like a regular cell, then follow the link
+  from the PFA, and then continue as a regular compiledWord.
+)
+    IY PUSHqq, ( like a regular cell )
+    L 2 IY+ LDrIXY,
+    H 3 IY+ LDrIXY,
+    HL PUSHqq, IY POPqq,
+    0x0e JPnn, ( 0e == compiledWord )
+
+
+PC ORG @ 0x20 + ! ( numberWord )
+( This is not a word, but a number literal. This works a bit
+  differently than others: PF means nothing and the actual
+  number is placed next to the numberWord reference in the
+  compiled word list. What we need to do to fetch that number
+  is to play with the IP.
+)
+    RAMSTART 0x06 + LDHL(nn), ( RAMSTART+0x06 == IP )
+    E (HL) LDrr,
+    HL INCss,
+    D (HL) LDrr,
+    HL INCss,
+    RAMSTART 0x06 + LD(nn)HL, ( RAMSTART+0x06 == IP )
+    DE PUSHqq,
+    JPNEXT,
+
+PC ORG @ 0x22 + ! ( litWord )
+( Similarly to numberWord, this is not a real word, but a
+  string literal. Instead of being followed by a 2 bytes
+  number, it's followed by a null-terminated string. When
+  called, puts the string's address on PS )
+    RAMSTART 0x06 + LDHL(nn), ( RAMSTART+0x06 == IP )
+    HL PUSHqq,
+    ( skip to null char )
+    A XORr, ( look for null )
+    B A LDrr,
+    C A LDrr,
+    CPIR,
+	( CPIR advances HL regardless of comparison, so goes one
+      char after NULL. This is good, because that's what we
+      want... )
+    RAMSTART 0x06 + LD(nn)HL, ( RAMSTART+0x06 == IP )
+    JPNEXT,
+
+
+( filler )
+NOP, NOP, NOP,
+
+( DICT HOOK )
+( This dummy dictionary entry serves two purposes:
+  1. Allow binary grafting. Because each binary dict always
+     end with a dummy entry, we always have a predictable
+     prev offset for the grafter's first entry.
+  2. Tell icore's "_c" routine where the boot binary ends.
+     See comment there.
+)
+'_' A, 'b' A, 'e' A, 'n' A, 'd' A,
+PC L2 @ - A,, ( prev )
+5 A,
 
 H@ 256 /MOD 2 PC! 2 PC!

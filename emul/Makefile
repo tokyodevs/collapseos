@@ -107,7 +107,7 @@ fbootstrap: forth/stage2
 
 .PHONY: fboot
 fboot: forth/stage2
-	cat ./forth/conf.fs ../forth/boot.fs | ./forth/stage2 | xxd
+	cat ./forth/conf.fs ../forth/boot.fs | ./forth/stage2 > forth/boot.bin
 
 .PHONY: clean
 clean:

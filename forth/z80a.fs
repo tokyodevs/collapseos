@@ -228,6 +228,8 @@
 0xd3 OP2n OUTnA,
 0xdb OP2n INAn,
 0xc6 OP2n ADDn,
+0xe6 OP2n ANDn,
+0xf6 OP2n Orn,
 0xd6 OP2n SUBn,
 
 ( r n -- )
