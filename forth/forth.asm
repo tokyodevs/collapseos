@@ -6,7 +6,7 @@
 ; Buffer where WORD copies its read word to.
 .equ	WORD_BUFSIZE		0x20
 ; Allocated space for sysvars (see comment above SYSVCNT)
-.equ	SYSV_BUFSIZE		0x10
+.equ	SYSV_BUFSIZE		0x20
 
 ; *** Variables ***
 .equ	INITIAL_SP	RAMSTART

@@ -105,6 +105,10 @@ updatebootstrap: $(ZASMBIN)
 fbootstrap: forth/stage2
 	cat ../forth/dummy.fs ../forth/z80c.fs forth/emul.fs ../forth/icore.fs ../forth/dummy.fs | ./forth/stage2 | tee forth/z80c.bin > /dev/null
 
+.PHONY: fboot
+fboot: forth/stage2
+	cat ./forth/conf.fs ../forth/boot.fs | ./forth/stage2 | xxd
+
 .PHONY: clean
 clean:
 	rm -f $(TARGETS) $(SHELLTGTS) emul.o zasm/*-bin.h shell/*-bin.h
